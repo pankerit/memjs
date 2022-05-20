@@ -1,5 +1,5 @@
 [package]
-name = "memjs"
+name = "mem-tool"
 version = "0.1.0"
 license = "ISC"
 edition = "2018"
@@ -11,18 +11,12 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-skidscan = "2.0.0"
 
 [dependencies.neon]
 version = "0.10"
 default-features = false
 features = ["napi-6", 'channel-api', 'promise-api', 'task-api']
 
-[dependencies.winapi]
-version = "0.3.9"
-features = [
-   'tlhelp32','minwindef', 'memoryapi','processthreadsapi', 'handleapi'
-]
 
 [dependencies.windows]
 version = "0.37.0"

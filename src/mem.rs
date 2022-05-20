@@ -1,7 +1,8 @@
-use std::ptr::null;
-use std::{mem, ptr};
+mod sig;
+use sig::Signature;
 
-use skidscan::Signature;
+use std::time::Instant;
+use std::{mem, ptr};
 
 use windows::Win32::Foundation::*;
 use windows::Win32::System::Diagnostics::Debug::ReadProcessMemory;
@@ -197,6 +198,7 @@ pub fn sig_scan(handle: HANDLE, pattern: &str, start_address: u64) -> Option<u64
     let mut info: MEMORY_BASIC_INFORMATION = unsafe { std::mem::zeroed() };
     let size = mem::size_of::<MEMORY_BASIC_INFORMATION>() as usize;
     let mut address = start_address;
+    let sig = Signature::new(pattern);
     loop {
         unsafe {
             if VirtualQueryEx(handle, address as *mut _, &mut info, size) != size {
@@ -206,7 +208,7 @@ pub fn sig_scan(handle: HANDLE, pattern: &str, start_address: u64) -> Option<u64
             if info.State != MEM_COMMIT || info.Type == MEM_IMAGE {
                 continue;
             }
-            let mut buffer: Vec<u8> = vec![0; info.RegionSize as usize];
+            let mut buffer: Vec<u8> = vec![0; info.RegionSize];
             ReadProcessMemory(
                 handle,
                 info.BaseAddress as *mut _,
@@ -215,15 +217,6 @@ pub fn sig_scan(handle: HANDLE, pattern: &str, start_address: u64) -> Option<u64
                 ptr::null_mut(),
             );
 
-            let sig = Signature::from(
-                pattern
-                    .split(" ")
-                    .map(|x| match x {
-                        "?" => None,
-                        _ => Some(u8::from_str_radix(x, 16).unwrap()),
-                    })
-                    .collect::<Vec<Option<u8>>>(),
-            );
             match sig.scan(&buffer) {
                 Some(x) => {
                     return Some(info.BaseAddress as u64 + x as u64);
@@ -242,13 +235,29 @@ fn wchar_to_string(wchar: &[u16]) -> String {
         .collect::<String>()
 }
 
-// cargo test -- --nocapture
+// cargo test --release -- --nocapture
+// #[test]
+// fn allocate_memory() {
+//     let process = open_process("Discord.exe").unwrap();
+//     let handle = HANDLE(process.handle);
+//     let address = alloc_memory(handle, 10);
+//     write_memory(handle, address, 0x02);
+//     let val = read_memory::<u8>(handle, address);
+//     assert_eq!(val, 2);
+// }
+
 #[test]
-fn allocate_memory() {
-    let process = open_process("Discord.exe").unwrap();
-    let handle = HANDLE(process.handle);
-    let address = alloc_memory(handle, 10);
-    write_memory(handle, address, 0x02);
-    let val = read_memory::<u8>(handle, address);
-    assert_eq!(val, 2);
+fn test_osu() {
+    let process = open_process("osu!.exe").unwrap();
+    let now = Instant::now();
+    let add = sig_scan(
+        HANDLE(process.handle),
+        "8D 65 F4 5B 5E 5F 5D C3 00 00 00 00 00 00 2C DF CF 14 00 00 00 00 24 DF CF 14",
+        0,
+    )
+    .unwrap();
+    let elapsed = now.elapsed();
+    println!("Elapsed: {:.2?}", elapsed);
+    println!("{:x}", add);
+    assert_eq!(2, 2);
 }

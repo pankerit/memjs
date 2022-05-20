@@ -1,4 +1,5 @@
-pub mod mem;
+mod mem;
+
 use neon::{prelude::*, types::buffer::TypedArray};
 use windows::Win32::Foundation::*;
 
