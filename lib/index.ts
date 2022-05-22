@@ -46,8 +46,32 @@ class Process {
         return sig_scan(this.handle, signature, baseAddress)
     }
 
+    readMemoryDWORD(address: number) {
+        return this.readMemoryBuffer(address, 4).readUint32LE(0)
+    }
+
+    readMemoryFloat64(address: number) {
+        return this.readMemoryBuffer(address, 8).readFloatLE(0)
+    }
+
+    readMemoryInt32(address: number) {
+        return this.readMemoryBuffer(address, 4).readInt32LE(0)
+    }
+
     readMemoryBuffer(address: number, size: number) {
         return read_memory(this.handle, address, size)
+    }
+
+    writeMemoryDWORD(address: number, value: number) {
+        return this.writeMemoryBuffer(address, Process.int32ToBuffer(value))
+    }
+
+    writeMemoryInt32(address: number, value: number) {
+        this.writeMemoryBuffer(address, Process.int32ToBuffer(value))
+    }
+
+    writeMemoryFloat64(address: number, value: number) {
+        this.writeMemoryBuffer(address, Process.float64ToBuffer(value))
     }
 
     writeMemoryBuffer(address: number, buffer: Buffer) {
@@ -56,6 +80,22 @@ class Process {
 
     allocMemory(size: number) {
         return alloc_memory(this.handle, size)
+    }
+
+    static int32ToBuffer(value: number) {
+        const buffer = Buffer.alloc(4)
+        buffer.writeInt32LE(value, 0)
+        return buffer
+    }
+
+    static float64ToBuffer(value: number) {
+        const buffer = Buffer.alloc(8)
+        buffer.writeFloatLE(value, 0)
+        return buffer
+    }
+
+    static stringToBuffer(value: string) {
+        return Buffer.from(value, 'utf8')
     }
 }
 

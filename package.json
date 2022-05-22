@@ -1,6 +1,6 @@
 {
     "name": "mem-tool",
-    "version": "0.1.6",
+    "version": "0.2.1",
     "description": "Utility for memory manipulation",
     "main": "index.js",
     "types": "types.d.ts",
@@ -10,7 +10,7 @@
         "build-release": "npm run build -- --release",
         "install": "npm run build-release",
         "test": "cargo test",
-        "build:js": "tsc && node build.js",
+        "build:js": "node build.js",
         "publish": "yarn build:js && npm publish ./dist"
     },
     "author": "Costea",
@@ -19,6 +19,7 @@
         "@types/node": "^17.0.35",
         "cargo-cp-artifact": "^0.1",
         "fs-extra": "^10.1.0",
+        "nodemon": "^2.0.16",
         "typescript": "^4.6.4"
     },
     "dependencies": {

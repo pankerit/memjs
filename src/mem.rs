@@ -82,12 +82,12 @@ pub fn open_process(process_name: &str) -> Result<Process, Box<dyn std::error::E
 }
 
 pub fn read_memory_buffer(handle: HANDLE, address: u64, size: usize) -> Vec<u8> {
-    let mut buffer: Vec<u8> = vec![0; size];
+    let buffer: Vec<u8> = vec![0; size];
     unsafe {
         ReadProcessMemory(
             handle,
             address as *mut _,
-            &mut buffer as *mut _ as *mut _,
+            buffer.as_ptr() as *mut _,
             size,
             ptr::null_mut(),
         );
@@ -110,25 +110,25 @@ pub fn read_memory<T>(handle: HANDLE, address: u64) -> T {
     val
 }
 
-pub fn write_memory_buffer(handle: HANDLE, aaddress: u64, buffer: &Vec<u8>) {
+pub fn write_memory_buffer(handle: HANDLE, address: u64, buffer: &Vec<u8>) {
     let size = buffer.len();
     unsafe {
         WriteProcessMemory(
             handle,
-            aaddress as *mut _,
-            buffer as *const _ as *mut _,
+            address as *mut _,
+            buffer.as_ptr() as *mut _,
             size,
             ptr::null_mut(),
         );
     }
 }
 
-pub fn write_memory<T>(handle: HANDLE, aaddress: u64, val: T) {
+pub fn write_memory<T>(handle: HANDLE, address: u64, val: T) {
     let size = std::mem::size_of::<T>();
     unsafe {
         WriteProcessMemory(
             handle,
-            aaddress as *mut _,
+            address as *mut _,
             &val as *const _ as *mut _,
             size,
             ptr::null_mut(),
@@ -208,15 +208,7 @@ pub fn sig_scan(handle: HANDLE, pattern: &str, start_address: u64) -> Option<u64
             if info.State != MEM_COMMIT || info.Type == MEM_IMAGE {
                 continue;
             }
-            let mut buffer: Vec<u8> = vec![0; info.RegionSize];
-            ReadProcessMemory(
-                handle,
-                info.BaseAddress as *mut _,
-                buffer.as_mut_ptr() as *mut _,
-                info.RegionSize as usize,
-                ptr::null_mut(),
-            );
-
+            let buffer = read_memory_buffer(handle, info.BaseAddress as u64, info.RegionSize);
             match sig.scan(&buffer) {
                 Some(x) => {
                     return Some(info.BaseAddress as u64 + x as u64);
@@ -236,28 +228,30 @@ fn wchar_to_string(wchar: &[u16]) -> String {
 }
 
 // cargo test --release -- --nocapture
-// #[test]
-// fn allocate_memory() {
-//     let process = open_process("Discord.exe").unwrap();
-//     let handle = HANDLE(process.handle);
-//     let address = alloc_memory(handle, 10);
-//     write_memory(handle, address, 0x02);
-//     let val = read_memory::<u8>(handle, address);
-//     assert_eq!(val, 2);
-// }
+#[test]
+fn allocate_memory() {
+    let process = open_process("Discord.exe").unwrap();
+    let handle = HANDLE(process.handle);
+    let address = alloc_memory(handle, 10);
+    write_memory(handle, address, 0x02);
+    let val = read_memory::<u8>(handle, address);
+    assert_eq!(val, 2);
+}
 
 #[test]
 fn test_osu() {
     let process = open_process("osu!.exe").unwrap();
-    let now = Instant::now();
-    let add = sig_scan(
-        HANDLE(process.handle),
-        "8D 65 F4 5B 5E 5F 5D C3 00 00 00 00 00 00 2C DF CF 14 00 00 00 00 24 DF CF 14",
-        0,
-    )
-    .unwrap();
-    let elapsed = now.elapsed();
-    println!("Elapsed: {:.2?}", elapsed);
-    println!("{:x}", add);
+    // let now = Instant::now();
+    // let add = sig_scan(
+    //     HANDLE(process.handle),
+    //     "85 C0 74 06 0F B6 50 0C EB 02 33 D2 85 D2",
+    //     0,
+    // )
+    // .unwrap();
+    // let elapsed = now.elapsed();
+    // let a = read_memory::<u32>(HANDLE(process.handle), add + 35);
+    let buffer = vec![0x64, 0x00, 0x00, 0x00];
+    write_memory_buffer(HANDLE(process.handle), 0x00F3F4DC, &buffer);
+    // println!("{:x}", a);
     assert_eq!(2, 2);
 }

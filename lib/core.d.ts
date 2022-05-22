@@ -28,7 +28,7 @@ export declare const get_processes: () => Process_[]
  * @param {number} baseAddress Base address to start searching from
  * @returns {Promise<number>} Address of the first occurrence of the signature
  */
-export declare const sig_scan: (handle: number, signature: string, baseAddress: number) => Promise<number>
+export declare const sig_scan: (handle: number, signature: string, baseAddress: number) => Promise<number | undefined>
 
 /**
  * @param {number} handle Process handle
