@@ -1,6 +1,6 @@
 {
     "name": "mem-tool",
-    "version": "0.3.2",
+    "version": "0.3.3",
     "description": "Utility for memory manipulation",
     "main": "index.js",
     "types": "types.d.ts",
