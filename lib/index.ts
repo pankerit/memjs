@@ -50,8 +50,12 @@ class Process {
         return this.readMemoryBuffer(address, 4).readUint32LE(0)
     }
 
+    readMemoryFloat32(address: number) {
+        return this.readMemoryBuffer(address, 4).readFloatLE(0)
+    }
+
     readMemoryFloat64(address: number) {
-        return this.readMemoryBuffer(address, 8).readFloatLE(0)
+        return this.readMemoryBuffer(address, 8).readDoubleLE(0)
     }
 
     readMemoryInt32(address: number) {
@@ -68,6 +72,10 @@ class Process {
 
     writeMemoryInt32(address: number, value: number) {
         this.writeMemoryBuffer(address, Process.int32ToBuffer(value))
+    }
+
+    writeMemoryFloat32(address: number, value: number) {
+        this.writeMemoryBuffer(address, Process.float32ToBuffer(value))
     }
 
     writeMemoryFloat64(address: number, value: number) {
@@ -88,9 +96,15 @@ class Process {
         return buffer
     }
 
+    static float32ToBuffer(value: number) {
+        const buffer = Buffer.alloc(4)
+        buffer.writeFloatLE(value, 0)
+        return buffer
+    }
+
     static float64ToBuffer(value: number) {
         const buffer = Buffer.alloc(8)
-        buffer.writeFloatLE(value, 0)
+        buffer.writeDoubleLE(value, 0)
         return buffer
     }
 
