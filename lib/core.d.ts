@@ -1,4 +1,21 @@
-import type { Process, Process_, Module } from 'mem-tool'
+export interface Process {
+    id: number
+    name: string
+    handle: number
+    path: string
+}
+
+export interface Process_ {
+    id: number
+    name: string
+}
+
+export interface Module {
+    baseAddress: number
+    size: number
+    name: string
+    path: string
+}
 
 /**
  * @param {string} processName - The name of the process to open.

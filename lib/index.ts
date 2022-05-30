@@ -1,4 +1,5 @@
-import { Module } from 'mem-tool'
+export { Module } from './core'
+import { Module } from './core'
 import {
     alloc_memory,
     close_handle,
