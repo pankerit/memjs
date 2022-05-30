@@ -80,7 +80,7 @@ fn get_modules(mut cx: FunctionContext) -> JsResult<JsArray> {
 
         module_obj.set(&mut cx, "id", id)?;
         module_obj.set(&mut cx, "name", name)?;
-        module_obj.set(&mut cx, "base", base)?;
+        module_obj.set(&mut cx, "baseAddress", base)?;
         module_obj.set(&mut cx, "size", size)?;
         module_obj.set(&mut cx, "path", path)?;
 
