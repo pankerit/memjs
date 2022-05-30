@@ -1,4 +1,4 @@
-import type { Process, Process_, Module } from './types'
+import type { Process, Process_, Module } from 'mem-tool'
 
 /**
  * @param {string} processName - The name of the process to open.

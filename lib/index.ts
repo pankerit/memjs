@@ -1,3 +1,4 @@
+import { Module } from 'mem-tool'
 import {
     alloc_memory,
     close_handle,
@@ -8,9 +9,8 @@ import {
     sig_scan,
     write_memory,
 } from './core'
-import { Module } from './types'
 
-class Process {
+export class Process {
     public id: number
     public name: string
     public handle: number
