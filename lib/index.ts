@@ -43,7 +43,7 @@ export class Process {
         return undefined
     }
 
-    sigScan(signature: string, baseAddress: number) {
+    sigScan(signature: string, baseAddress = 0) {
         return sig_scan(this.handle, signature, baseAddress)
     }
 
