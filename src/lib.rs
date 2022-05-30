@@ -65,10 +65,10 @@ fn alloc_memory(mut cx: FunctionContext) -> JsResult<JsNumber> {
     Ok(cx.number(address as f64))
 }
 
-fn get_modules(mut cx: FunctionContext) -> JsResult<JsObject> {
+fn get_modules(mut cx: FunctionContext) -> JsResult<JsArray> {
     let process_id = cx.argument::<JsNumber>(0)?.value(&mut cx);
     let modules = mem::get_modules(process_id as u32).unwrap();
-    let obj = cx.empty_object();
+    let obj = cx.empty_array();
     let mut i = 0;
     for module in modules {
         let module_obj = cx.empty_object();

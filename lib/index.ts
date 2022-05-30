@@ -29,7 +29,7 @@ class Process {
     }
 
     getModules() {
-        return get_modules(this.handle)
+        return get_modules(this.id)
     }
 
     findModule(moduleName: string): Module | undefined {
