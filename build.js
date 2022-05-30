@@ -12,7 +12,6 @@ execSync('yarn tsc')
 
 fs.copyFileSync('./README.md', './dist/README.md')
 fs.copyFileSync('./index.node', './dist/index.node')
-fs.copyFileSync('./lib/keystonedll.js', './dist/keystonedll.js')
 fs.copyFileSync('./lib/core.js', './dist/core.js')
 fs.copyFileSync('./lib/core.d.ts', './dist/core.d.ts')
 
