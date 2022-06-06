@@ -1,49 +1,31 @@
 mod sig;
 use sig::Signature;
 
-use std::time::Instant;
-use std::{mem, ptr};
-
 use windows::Win32::Foundation::*;
-use windows::Win32::System::Diagnostics::Debug::ReadProcessMemory;
-use windows::Win32::System::Diagnostics::Debug::WriteProcessMemory;
-
-use windows::Win32::System::Diagnostics::ToolHelp::CreateToolhelp32Snapshot;
-use windows::Win32::System::Diagnostics::ToolHelp::Module32NextW;
-use windows::Win32::System::Diagnostics::ToolHelp::Process32NextW;
-use windows::Win32::System::Diagnostics::ToolHelp::MODULEENTRY32W;
-use windows::Win32::System::Diagnostics::ToolHelp::PROCESSENTRY32W;
-use windows::Win32::System::Diagnostics::ToolHelp::{
-    TH32CS_SNAPMODULE, TH32CS_SNAPMODULE32, TH32CS_SNAPPROCESS,
-};
-
-use windows::Win32::System::Threading::OpenProcess;
-use windows::Win32::System::Threading::PROCESS_ALL_ACCESS;
-
+use windows::Win32::System::Diagnostics::Debug::{ReadProcessMemory, WriteProcessMemory};
+use windows::Win32::System::Diagnostics::ToolHelp::*;
+use windows::Win32::System::Memory::*;
 use windows::Win32::System::ProcessStatus::K32GetModuleFileNameExW;
+use windows::Win32::System::Threading::{OpenProcess, PROCESS_ALL_ACCESS};
 
-use windows::Win32::System::Memory::{
-    VirtualAllocEx, VirtualQueryEx, MEMORY_BASIC_INFORMATION, MEM_COMMIT, MEM_IMAGE, MEM_RESERVE,
-    PAGE_EXECUTE_READWRITE,
-};
-
-#[derive(Debug)]
-pub struct Process_ {
-    pub id: u32,
-    pub name: String,
+pub fn wchar_to_string(wchar: &[u16]) -> String {
+    wchar
+        .iter()
+        .take_while(|&x| *x != 0)
+        .map(|&x| x as u8 as char)
+        .collect::<String>()
 }
 
 #[derive(Debug)]
 pub struct Process {
     pub id: u32,
     pub name: String,
-    pub handle: isize,
-    pub path: String,
+    pub handle: HANDLE,
 }
 
 #[derive(Debug)]
 pub struct Module {
-    pub base_address: u64,
+    pub base_address: u32,
     pub size: usize,
     pub name: String,
     pub path: String,
@@ -52,8 +34,8 @@ pub struct Module {
 pub fn open_process(process_name: &str) -> Result<Process, Box<dyn std::error::Error>> {
     unsafe {
         let hProcessId = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)?;
-        let mut entry: PROCESSENTRY32W = unsafe { std::mem::zeroed() };
-        entry.dwSize = mem::size_of::<PROCESSENTRY32W>() as u32;
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
         let mut found = false;
         while Process32NextW(hProcessId, &mut entry).as_bool() {
             if wchar_to_string(&entry.szExeFile) == process_name.to_string() {
@@ -61,69 +43,64 @@ pub fn open_process(process_name: &str) -> Result<Process, Box<dyn std::error::E
                 break;
             }
         }
-        if (!found) {
-            return Err("Failed to open process".into());
+        if !found {
+            return Err("Process not found".into());
         }
         CloseHandle(hProcessId);
         let hProcess = OpenProcess(PROCESS_ALL_ACCESS, BOOL(0), entry.th32ProcessID)?;
-        let mut path: [u16; 260] = [0; 260];
-        let mut ret = K32GetModuleFileNameExW(hProcess, HINSTANCE(0), &mut path);
-        if ret == 0 {
-            return Err("Failed to get process path".into());
-        }
-        let path = wchar_to_string(&path);
-        return Ok(Process {
+
+        Ok(Process {
             id: entry.th32ProcessID,
             name: wchar_to_string(&entry.szExeFile),
-            handle: hProcess.0,
-            path,
-        });
+            handle: hProcess,
+        })
     }
 }
 
-pub fn read_memory_buffer(handle: HANDLE, address: u64, size: usize) -> Vec<u8> {
-    let buffer: Vec<u8> = vec![0; size];
+pub fn read_memory<T>(handle: HANDLE, address: u32) -> T {
     unsafe {
-        ReadProcessMemory(
-            handle,
-            address as *mut _,
-            buffer.as_ptr() as *mut _,
-            size,
-            ptr::null_mut(),
-        );
-    }
-    buffer
-}
+        let mut val: T = std::mem::zeroed();
+        let size = std::mem::size_of::<T>();
 
-pub fn read_memory<T>(handle: HANDLE, address: u64) -> T {
-    let mut val: T = unsafe { std::mem::zeroed() };
-    let size = std::mem::size_of::<T>();
-    unsafe {
         ReadProcessMemory(
             handle,
             address as *mut _,
             &mut val as *mut _ as *mut _,
             size,
-            ptr::null_mut(),
+            std::ptr::null_mut(),
         );
+
+        val
     }
-    val
 }
 
-pub fn write_memory_buffer(handle: HANDLE, address: u64, buffer: &Vec<u8>) {
-    let size = buffer.len();
+pub fn read_memory_buffer(handle: HANDLE, address: u32, size: usize) -> Vec<u8> {
     unsafe {
-        WriteProcessMemory(
+        let buffer: Vec<u8> = vec![0; size];
+        ReadProcessMemory(
             handle,
             address as *mut _,
             buffer.as_ptr() as *mut _,
             size,
-            ptr::null_mut(),
+            std::ptr::null_mut(),
         );
+        buffer
     }
 }
 
-pub fn write_memory<T>(handle: HANDLE, address: u64, val: T) {
+pub fn read_memory_from_pointer<T>(handle: HANDLE, addresses: &Vec<u32>) -> T {
+    let size = addresses.len();
+    let mut pointer = read_memory::<u32>(handle, addresses[0]);
+    if size > 2 {
+        for i in 1..addresses.len() - 1 {
+            pointer = read_memory::<u32>(handle, pointer + addresses[i]);
+        }
+    }
+
+    read_memory::<T>(handle, pointer + addresses.last().unwrap())
+}
+
+pub fn write_memory<T>(handle: HANDLE, address: u32, val: T) {
     let size = std::mem::size_of::<T>();
     unsafe {
         WriteProcessMemory(
@@ -131,16 +108,29 @@ pub fn write_memory<T>(handle: HANDLE, address: u64, val: T) {
             address as *mut _,
             &val as *const _ as *mut _,
             size,
-            ptr::null_mut(),
+            std::ptr::null_mut(),
         );
     }
 }
 
-pub fn alloc_memory(handle: HANDLE, size: usize) -> u64 {
+pub fn write_memory_buffer(handle: HANDLE, address: u32, buffer: &Vec<u8>) {
+    unsafe {
+        let size = buffer.len();
+        WriteProcessMemory(
+            handle,
+            address as *mut _,
+            buffer.as_ptr() as *mut _,
+            size,
+            std::ptr::null_mut(),
+        );
+    }
+}
+
+pub fn alloc_memory(handle: HANDLE, size: usize) -> u32 {
     let address = unsafe {
         VirtualAllocEx(
             handle,
-            ptr::null_mut(),
+            std::ptr::null_mut(),
             size,
             MEM_COMMIT | MEM_RESERVE,
             PAGE_EXECUTE_READWRITE,
@@ -148,56 +138,17 @@ pub fn alloc_memory(handle: HANDLE, size: usize) -> u64 {
     };
 
     let a = format!("{:?}", address);
-    u64::from_str_radix(&a[2..], 16).unwrap()
+    u32::from_str_radix(&a[2..], 16).unwrap()
 }
 
 pub fn close_handle(handle: HANDLE) -> bool {
     unsafe { CloseHandle(handle).as_bool() }
 }
 
-pub fn get_modules(process_id: u32) -> Result<Vec<Module>, Box<dyn std::error::Error>> {
-    unsafe {
-        let hProcessId =
-            CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, process_id)?;
-        let mut entry: MODULEENTRY32W = unsafe { std::mem::zeroed() };
-        entry.dwSize = mem::size_of::<MODULEENTRY32W>() as u32;
-        let mut modules = Vec::new();
-        while Module32NextW(hProcessId, &mut entry).as_bool() {
-            let module = Module {
-                base_address: entry.modBaseAddr as u64,
-                size: entry.modBaseSize as usize,
-                name: wchar_to_string(&entry.szModule),
-                path: wchar_to_string(&entry.szExePath),
-            };
-            modules.push(module);
-        }
-        CloseHandle(hProcessId);
-        return Ok(modules);
-    }
-}
-
-pub fn get_processes() -> Result<Vec<Process_>, Box<dyn std::error::Error>> {
-    unsafe {
-        let hProcessId = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)?;
-        let mut entry: PROCESSENTRY32W = unsafe { std::mem::zeroed() };
-        entry.dwSize = mem::size_of::<PROCESSENTRY32W>() as u32;
-        let mut processes = Vec::new();
-        while Process32NextW(hProcessId, &mut entry).as_bool() {
-            let process = Process_ {
-                id: entry.th32ProcessID,
-                name: wchar_to_string(&entry.szExeFile),
-            };
-            processes.push(process);
-        }
-        CloseHandle(hProcessId);
-        return Ok(processes);
-    }
-}
-
-pub fn sig_scan(handle: HANDLE, pattern: &str, start_address: u64) -> Option<u64> {
+pub fn sig_scan(handle: HANDLE, pattern: &str, start_address: u32) -> Option<u32> {
     let mut info: MEMORY_BASIC_INFORMATION = unsafe { std::mem::zeroed() };
-    let size = mem::size_of::<MEMORY_BASIC_INFORMATION>() as usize;
-    let mut address = start_address;
+    let size = std::mem::size_of::<MEMORY_BASIC_INFORMATION>() as usize;
+    let mut address = start_address as u64;
     let sig = Signature::new(pattern);
     loop {
         unsafe {
@@ -208,10 +159,10 @@ pub fn sig_scan(handle: HANDLE, pattern: &str, start_address: u64) -> Option<u64
             if info.State != MEM_COMMIT || info.Type == MEM_IMAGE {
                 continue;
             }
-            let buffer = read_memory_buffer(handle, info.BaseAddress as u64, info.RegionSize);
+            let buffer = read_memory_buffer(handle, info.BaseAddress as u32, info.RegionSize);
             match sig.scan(&buffer) {
                 Some(x) => {
-                    return Some(info.BaseAddress as u64 + x as u64);
+                    return Some(info.BaseAddress as u32 + x);
                 }
                 None => {}
             };
@@ -219,39 +170,70 @@ pub fn sig_scan(handle: HANDLE, pattern: &str, start_address: u64) -> Option<u64
     }
 }
 
-fn wchar_to_string(wchar: &[u16]) -> String {
-    wchar
-        .iter()
-        .take_while(|&x| *x != 0)
-        .map(|&x| x as u8 as char)
-        .collect::<String>()
+pub fn sig_scan_module(
+    handle: HANDLE,
+    process_id: u32,
+    pattern: &str,
+    module_name: &str,
+) -> Option<u32> {
+    let modules = get_process_modules(process_id);
+    for module in modules {
+        if module.name == module_name {
+            let sig = Signature::new(pattern);
+            let buffer = read_memory_buffer(handle, module.base_address, module.size);
+            match sig.scan(&buffer) {
+                Some(x) => {
+                    return Some(module.base_address + x);
+                }
+                None => return None,
+            };
+        }
+    }
+    None
+}
+
+pub fn get_process_path(handle: HANDLE) -> Option<String> {
+    unsafe {
+        let mut path: [u16; 260] = [0; 260];
+        let mut ret = K32GetModuleFileNameExW(handle, HINSTANCE(0), &mut path);
+        if ret == 0 {
+            return None;
+        }
+        Some(wchar_to_string(&path))
+    }
+}
+
+pub fn get_process_modules(process_id: u32) -> Vec<Module> {
+    unsafe {
+        let hProcessId =
+            CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, process_id).unwrap();
+        let mut entry: MODULEENTRY32W = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<MODULEENTRY32W>() as u32;
+        let mut modules = Vec::new();
+        while Module32NextW(hProcessId, &mut entry).as_bool() {
+            let module = Module {
+                base_address: entry.modBaseAddr as u32,
+                size: entry.modBaseSize as usize,
+                name: wchar_to_string(&entry.szModule),
+                path: wchar_to_string(&entry.szExePath),
+            };
+            modules.push(module);
+        }
+        CloseHandle(hProcessId);
+        modules
+    }
 }
 
 // cargo test --release -- --nocapture
 #[test]
-fn allocate_memory() {
-    let process = open_process("Discord.exe").unwrap();
-    let handle = HANDLE(process.handle);
-    let address = alloc_memory(handle, 10);
-    write_memory(handle, address, 0x02);
-    let val = read_memory::<u8>(handle, address);
-    assert_eq!(val, 2);
-}
-
-#[test]
-fn test_osu() {
+fn test() {
     let process = open_process("osu!.exe").unwrap();
-    // let now = Instant::now();
-    // let add = sig_scan(
-    //     HANDLE(process.handle),
-    //     "85 C0 74 06 0F B6 50 0C EB 02 33 D2 85 D2",
-    //     0,
-    // )
-    // .unwrap();
-    // let elapsed = now.elapsed();
-    // let a = read_memory::<u32>(HANDLE(process.handle), add + 35);
-    let buffer = vec![0x64, 0x00, 0x00, 0x00];
-    write_memory_buffer(HANDLE(process.handle), 0x00F3F4DC, &buffer);
-    // println!("{:x}", a);
+    let now = std::time::Instant::now();
+    sig_scan(
+        process.handle,
+        "55 8B EC 57 56 53 83 EC 14 33 C0 89 45 E8 83 3D AD EC DF",
+        0,
+    );
+    println!("{:?}", now.elapsed().as_millis());
     assert_eq!(2, 2);
 }

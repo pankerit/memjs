@@ -1,117 +1,148 @@
-export { Module } from './core'
-import { Module } from './core'
+/// <reference types="node" />
 import {
     alloc_memory,
     close_handle,
-    get_modules,
-    get_processes,
+    get_process_modules,
+    get_process_path,
+    Module,
     open_process,
-    read_memory,
+    read_memory_bool,
+    read_memory_buffer,
+    read_memory_f32,
+    read_memory_f64,
+    read_memory_i32,
+    read_memory_i64,
+    read_memory_string,
+    read_memory_u32,
+    read_memory_u64,
     sig_scan,
-    write_memory,
+    sig_scan_module,
+    sig_scan_module_sync,
+    sig_scan_sync,
+    write_memory_bool,
+    write_memory_buffer,
+    write_memory_f32,
+    write_memory_f64,
+    write_memory_i32,
+    write_memory_i64,
+    write_memory_string,
+    write_memory_u32,
+    write_memory_u64,
 } from './core'
 
 export class Process {
     public id: number
     public name: string
     public handle: number
-    public path: string
 
     constructor(processName: string) {
         const process = open_process(processName)
         this.id = process.id
         this.name = process.name
         this.handle = process.handle
-        this.path = process.path
     }
 
-    close() {
-        close_handle(this.handle)
+    close(): boolean {
+        return close_handle(this.handle)
     }
 
-    getModules() {
-        return get_modules(this.id)
+    sigScanSync(signature: string, baseAddress: number = 0): number | undefined {
+        return sig_scan_sync(this.handle, signature, baseAddress)
     }
 
-    findModule(moduleName: string): Module | undefined {
-        const modules = this.getModules()
-        for (const module of modules) {
-            if (module.name === moduleName) {
-                return module
-            }
-        }
-        return undefined
-    }
-
-    sigScan(signature: string, baseAddress = 0) {
+    sigScan(signature: string, baseAddress: number = 0): Promise<number | undefined> {
         return sig_scan(this.handle, signature, baseAddress)
     }
 
-    readMemoryDWORD(address: number) {
-        return this.readMemoryBuffer(address, 4).readUint32LE(0)
+    sigScanModuleSync(signature: string, moduleName: string): number | undefined {
+        return sig_scan_module_sync(this.handle, this.id, signature, moduleName)
     }
 
-    readMemoryFloat32(address: number) {
-        return this.readMemoryBuffer(address, 4).readFloatLE(0)
+    sigScanModule(signature: string, moduleName: string): Promise<number | undefined> {
+        return sig_scan_module(this.handle, this.id, signature, moduleName)
     }
 
-    readMemoryFloat64(address: number) {
-        return this.readMemoryBuffer(address, 8).readDoubleLE(0)
+    readMemoryBuffer(address: number, size: number): Buffer {
+        return read_memory_buffer(this.handle, address, size)
     }
 
-    readMemoryInt32(address: number) {
-        return this.readMemoryBuffer(address, 4).readInt32LE(0)
+    writeMemoryBuffer(address: number, buffer: Buffer): void {
+        write_memory_buffer(this.handle, address, buffer)
     }
 
-    readMemoryBuffer(address: number, size: number) {
-        return read_memory(this.handle, address, size)
-    }
-
-    writeMemoryDWORD(address: number, value: number) {
-        return this.writeMemoryBuffer(address, Process.int32ToBuffer(value))
-    }
-
-    writeMemoryInt32(address: number, value: number) {
-        this.writeMemoryBuffer(address, Process.int32ToBuffer(value))
-    }
-
-    writeMemoryFloat32(address: number, value: number) {
-        this.writeMemoryBuffer(address, Process.float32ToBuffer(value))
-    }
-
-    writeMemoryFloat64(address: number, value: number) {
-        this.writeMemoryBuffer(address, Process.float64ToBuffer(value))
-    }
-
-    writeMemoryBuffer(address: number, buffer: Buffer) {
-        write_memory(this.handle, address, buffer)
-    }
-
-    allocMemory(size: number) {
+    allocMemory(size: number): number {
         return alloc_memory(this.handle, size)
     }
 
-    static int32ToBuffer(value: number) {
-        const buffer = Buffer.alloc(4)
-        buffer.writeInt32LE(value, 0)
-        return buffer
+    readMemoryU32(address: number): number {
+        return read_memory_u32(this.handle, address)
     }
 
-    static float32ToBuffer(value: number) {
-        const buffer = Buffer.alloc(4)
-        buffer.writeFloatLE(value, 0)
-        return buffer
+    writeMemoryU32(address: number, value: number): void {
+        write_memory_u32(this.handle, address, value)
     }
 
-    static float64ToBuffer(value: number) {
-        const buffer = Buffer.alloc(8)
-        buffer.writeDoubleLE(value, 0)
-        return buffer
+    readMemoryU64(address: number): number {
+        return read_memory_u64(this.handle, address)
     }
 
-    static stringToBuffer(value: string) {
-        return Buffer.from(value, 'utf8')
+    writeMemoryU64(address: number, value: number): void {
+        write_memory_u64(this.handle, address, value)
+    }
+
+    readMemoryI32(address: number): number {
+        return read_memory_i32(this.handle, address)
+    }
+
+    writeMemoryI32(address: number, value: number): void {
+        write_memory_i32(this.handle, address, value)
+    }
+
+    readMemoryI64(address: number): number {
+        return read_memory_i64(this.handle, address)
+    }
+
+    writeMemoryI64(address: number, value: number): void {
+        write_memory_i64(this.handle, address, value)
+    }
+
+    readMemoryF32(address: number): number {
+        return read_memory_f32(this.handle, address)
+    }
+
+    writeMemoryF32(address: number, value: number): void {
+        write_memory_f32(this.handle, address, value)
+    }
+
+    readMemoryF64(address: number): number {
+        return read_memory_f64(this.handle, address)
+    }
+
+    writeMemoryF64(address: number, value: number): void {
+        write_memory_f64(this.handle, address, value)
+    }
+
+    readMemoryBool(address: number): boolean {
+        return read_memory_bool(this.handle, address)
+    }
+
+    writeMemoryBool(address: number, value: boolean): void {
+        write_memory_bool(this.handle, address, value)
+    }
+
+    readMemoryString(address: number, size: number): string {
+        return read_memory_string(this.handle, address, size)
+    }
+
+    writeMemoryString(address: number, value: string): void {
+        write_memory_string(this.handle, address, value)
+    }
+
+    getProcessPath(): string {
+        return get_process_path(this.handle)
+    }
+
+    getProcessModules(): Module[] {
+        return get_process_modules(this.id)
     }
 }
-
-export default Process

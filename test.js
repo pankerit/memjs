@@ -1,7 +1,7 @@
-const { default: Mem } = require('./dist/index')
-console.log(Mem)
+const { Process } = require('./dist/index')
+console.log(Process)
 const main = async () => {
-    const process = new Mem('osu!.exe')
+    const process = new Process('osu!.exe')
     const sig = '85 C0 74 06 0F B6 50 0C EB 02 33 D2 85 D2'
 
     console.time('mem')

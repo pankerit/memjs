@@ -20,7 +20,7 @@ impl Signature {
         Self { value, mask }
     }
 
-    pub fn scan(&self, buffer: &[u8]) -> Option<u64> {
+    pub fn scan(&self, buffer: &[u8]) -> Option<u32> {
         let value_size = self.value.len();
         let buffer_size = buffer.len();
         for i in 0..buffer_size {
@@ -36,7 +36,7 @@ impl Signature {
                     }
                 }
                 if j == value_size {
-                    return Some(i as u64);
+                    return Some(i as u32);
                 }
             }
         }

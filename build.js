@@ -7,11 +7,13 @@ try {
     fs.rmSync('./dist', { recursive: true })
 } catch (e) {}
 
-execSync('npm run build-release')
+execSync('yarn build-release:ia32')
+execSync('yarn build-release:x64')
 execSync('yarn tsc')
 
 fs.copyFileSync('./README.md', './dist/README.md')
-fs.copyFileSync('./index.node', './dist/index.node')
+fs.copyFileSync('./index_ia32.node', './dist/index_ia32.node')
+fs.copyFileSync('./index_x64.node', './dist/index_x64.node')
 fs.copyFileSync('./lib/core.js', './dist/core.js')
 fs.copyFileSync('./lib/core.d.ts', './dist/core.d.ts')
 
