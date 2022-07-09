@@ -69,7 +69,7 @@ export declare const read_memory_bool: (handle: number, address: number) => bool
 
 export declare const write_memory_bool: (handle: number, address: number, value: boolean) => void
 
-export declare const read_memory_string: (handle: number, address: number, size: number) => string
+export declare const read_memory_string: (handle: number, address: number) => string
 
 export declare const write_memory_string: (handle: number, address: number, value: string) => void
 

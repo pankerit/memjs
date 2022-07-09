@@ -225,10 +225,16 @@ fn write_memory_bool(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
 fn read_memory_string(mut cx: FunctionContext) -> JsResult<JsString> {
     let handle = cx.argument::<JsNumber>(0)?.value(&mut cx);
-    let address = cx.argument::<JsNumber>(1)?.value(&mut cx) as u32;
-    let size = cx.argument::<JsNumber>(2)?.value(&mut cx) as usize;
-    let buffer = mem::read_memory_buffer(HANDLE(handle as isize), address, size);
-    let value = String::from_utf8(buffer).unwrap();
+    let mut address = cx.argument::<JsNumber>(1)?.value(&mut cx) as u32;
+    let mut value = String::new();
+    loop {
+        let c = mem::read_memory::<u8>(HANDLE(handle as isize), address);
+        if c == 0x0 {
+            break;
+        }
+        value.push(c as char);
+        address += 1;
+    }
     Ok(cx.string(&value))
 }
 

@@ -130,8 +130,8 @@ export class Process {
         write_memory_bool(this.handle, address, value)
     }
 
-    readMemoryString(address: number, size: number): string {
-        return read_memory_string(this.handle, address, size)
+    readMemoryString(address: number): string {
+        return read_memory_string(this.handle, address)
     }
 
     writeMemoryString(address: number, value: string): void {
