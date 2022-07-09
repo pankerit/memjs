@@ -4,10 +4,15 @@ use neon::{prelude::*, types::buffer::TypedArray};
 use windows::Win32::Foundation::*;
 
 fn open_process(mut cx: FunctionContext) -> JsResult<JsObject> {
-    let processName = cx.argument::<JsString>(0)?.value(&mut cx);
-    let process = mem::open_process(processName.as_str()).unwrap();
-    let mut obj = cx.empty_object();
+    let process_name = cx.argument::<JsString>(0)?.value(&mut cx);
+    let process = match mem::open_process(process_name.as_str()) {
+        Ok(process) => process,
+        Err(err) => {
+            return cx.throw_error(err.to_string());
+        }
+    };
 
+    let obj = cx.empty_object();
     let id = cx.number(process.id);
     let name = cx.string(&process.name);
     let handle = cx.number(process.handle.0 as f64);
